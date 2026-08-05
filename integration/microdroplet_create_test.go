@@ -43,10 +43,17 @@ var _ = suite("compute/microdroplet/create", func(t *testing.T, when spec.G, it 
 
 				var got map[string]any
 				expect.NoError(json.Unmarshal(reqBody, &got))
-				expect.Equal("sammy-microdroplet", got["name"])
 				expect.Equal("nyc1", got["region"])
 				expect.Equal("md-1vcpu-512mb", got["size"])
-				expect.Equal("do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000", got["image"])
+				expect.Equal("do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000", got["image"])
+				switch got["name"] {
+				case "sammy-microdroplet":
+					expect.NotContains(got, "auto_pause")
+				case "always-on":
+					expect.Equal(map[string]any{"enabled": false}, got["auto_pause"])
+				default:
+					t.Fatalf("unexpected MicroDroplet name: %v", got["name"])
+				}
 
 				w.WriteHeader(http.StatusCreated)
 				w.Write([]byte(microDropletCreateResponse))
@@ -69,7 +76,25 @@ var _ = suite("compute/microdroplet/create", func(t *testing.T, when spec.G, it 
 				"compute", "microdroplet", "create", "sammy-microdroplet",
 				"--region", "nyc1",
 				"--size", "md-1vcpu-512mb",
-				"--image", "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000",
+				"--image", "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
+			)
+
+			output, err := cmd.CombinedOutput()
+			expect.NoError(err, fmt.Sprintf("received error output: %s", output))
+			expect.Equal(strings.TrimSpace(microDropletCreateOutput), strings.TrimSpace(string(output)))
+		})
+	})
+
+	when("auto-pause is explicitly disabled", func() {
+		it("sends enabled=false instead of omitting auto_pause", func() {
+			cmd := exec.Command(builtBinaryPath,
+				"-t", "some-magic-token",
+				"-u", server.URL,
+				"compute", "microdroplet", "create", "always-on",
+				"--region", "nyc1",
+				"--size", "md-1vcpu-512mb",
+				"--image", "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
+				"--auto-pause=false",
 			)
 
 			output, err := cmd.CombinedOutput()
@@ -96,7 +121,7 @@ var _ = suite("compute/microdroplet/create", func(t *testing.T, when spec.G, it 
 const (
 	microDropletCreateOutput = `
 ID                                      Name                  Region    State       Size              Networking    Image                                                         Endpoint    Created At
-b2a2f7a4-8d34-4c1c-9c66-3f2b7f8f38f2    sammy-microdroplet    nyc1      creating    md-1vcpu-512mb    public        do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000                2026-07-16T10:00:00Z
+b2a2f7a4-8d34-4c1c-9c66-3f2b7f8f38f2    sammy-microdroplet    nyc1      creating    md-1vcpu-512mb    public        do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000                2026-07-16T10:00:00Z
 `
 	microDropletCreateResponse = `
 {
@@ -107,7 +132,7 @@ b2a2f7a4-8d34-4c1c-9c66-3f2b7f8f38f2    sammy-microdroplet    nyc1      creating
     "state": "creating",
     "size": "md-1vcpu-512mb",
     "networking": "public",
-    "image": "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000",
+    "image": "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
     "created_at": "2026-07-16T10:00:00Z"
   }
 }

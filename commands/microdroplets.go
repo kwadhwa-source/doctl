@@ -64,7 +64,7 @@ func MicroDroplet() *Command {
 	AddStringFlag(cmdMicroDropletCreate, doctl.ArgVPCUUID, "", "",
 		"The UUID of a non-default VPC to place the MicroDroplet in (only valid when `--networking=vpc`)")
 	AddBoolFlag(cmdMicroDropletCreate, "auto-pause", "", false,
-		"Enable auto-pause when the MicroDroplet is idle")
+		"Enable or disable auto-pause when the MicroDroplet is idle")
 	AddStringFlag(cmdMicroDropletCreate, "auto-pause-idle-timeout", "", "",
 		"Idle duration before auto-pause (e.g. `5m`, `30s`); requires `--auto-pause`")
 	AddBoolFlag(cmdMicroDropletCreate, "auto-resume", "", false,
@@ -120,24 +120,26 @@ func microDropletImages() *Command {
 	CmdBuilder(cmd, RunMicroDropletImageList, "list",
 		"List MicroDroplet images on your account",
 		"Retrieves a list of MicroDroplet images on your account.",
-		Writer, aliasOpt("ls"), displayerType(&displayers.MicroDropletImage{}))
+		Writer, aliasOpt("ls"), displayerType(&displayers.MicroDropletImage{}), overrideCmdNS("microdroplet-image"))
 
 	CmdBuilder(cmd, RunMicroDropletImageGet, "get <image-id>",
 		"Retrieve information about a MicroDroplet image",
 		"Retrieves information about a MicroDroplet image by its UUID.",
-		Writer, aliasOpt("g"), displayerType(&displayers.MicroDropletImage{}))
+		Writer, aliasOpt("g"), displayerType(&displayers.MicroDropletImage{}), overrideCmdNS("microdroplet-image"))
 
 	cmdImageCreate := CmdBuilder(cmd, RunMicroDropletImageCreate, "create <image-name>",
 		"Import a new MicroDroplet image",
 		"Imports a new MicroDroplet image from a public OCI ref or a DOCR ref. Import is asynchronous.",
-		Writer, aliasOpt("c"), displayerType(&displayers.MicroDropletImage{}))
+		Writer, aliasOpt("c"), displayerType(&displayers.MicroDropletImage{}), overrideCmdNS("microdroplet-image"))
+	AddStringFlag(cmdImageCreate, doctl.ArgRegionSlug, "", "",
+		"The region to import the image into", requiredOpt())
 	AddStringFlag(cmdImageCreate, "source", "", "",
 		"The OCI or DOCR source ref for the image", requiredOpt())
 
 	cmdImageDelete := CmdBuilder(cmd, RunMicroDropletImageDelete, "delete <image-id>...",
 		"Permanently delete one or more MicroDroplet images",
 		"Permanently deletes the specified MicroDroplet images. This is irreversible.",
-		Writer, aliasOpt("d", "rm"))
+		Writer, aliasOpt("d", "rm"), overrideCmdNS("microdroplet-image"))
 	AddBoolFlag(cmdImageDelete, doctl.ArgForce, doctl.ArgShortForce, false,
 		"Delete the image(s) without a confirmation prompt")
 
@@ -249,8 +251,10 @@ func RunMicroDropletCreate(c *CmdConfig) error {
 	if autoPauseIdle != "" && !autoPauseEnabled {
 		return fmt.Errorf("--auto-pause-idle-timeout requires --auto-pause")
 	}
-	if autoPauseEnabled {
-		enabled := true
+	autoPauseSpecified := autoPauseEnabled ||
+		(c.Command != nil && c.Command.Flags().Changed("auto-pause"))
+	if autoPauseSpecified {
+		enabled := autoPauseEnabled
 		req.AutoPause = &godo.AutoPauseConfig{
 			Enabled:     &enabled,
 			IdleTimeout: autoPauseIdle,
@@ -372,8 +376,19 @@ func RunMicroDropletImageCreate(c *CmdConfig) error {
 	if err != nil {
 		return err
 	}
+	if source == "" {
+		return fmt.Errorf("--source is required")
+	}
+	region, err := c.Doit.GetString(c.NS, doctl.ArgRegionSlug)
+	if err != nil {
+		return err
+	}
+	if region == "" {
+		return fmt.Errorf("--region is required")
+	}
 	img, err := c.MicroDropletImages().Create(&godo.MicroDropletImageCreateRequest{
 		Name:   c.Args[0],
+		Region: region,
 		Source: source,
 	})
 	if err != nil {

@@ -86,7 +86,7 @@ var _ = suite("compute/microdroplet/list", func(t *testing.T, when spec.G, it sp
 const (
 	microDropletListOutput = `
 ID                                      Name                  Region    State      Size              Networking    Image                                                         Endpoint                                        Created At
-b2a2f7a4-8d34-4c1c-9c66-3f2b7f8f38f2    sammy-microdroplet    nyc1      running    md-1vcpu-512mb    public        do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000    https://sammy.microdroplets.digitalocean.app    2026-07-16T10:00:00Z
+b2a2f7a4-8d34-4c1c-9c66-3f2b7f8f38f2    sammy-microdroplet    nyc1      running    md-1vcpu-512mb    public        do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000    https://sammy.microdroplets.digitalocean.app    2026-07-16T10:00:00Z
 `
 	microDropletListResponse = `
 {
@@ -98,7 +98,7 @@ b2a2f7a4-8d34-4c1c-9c66-3f2b7f8f38f2    sammy-microdroplet    nyc1      running 
       "state": "running",
       "size": "md-1vcpu-512mb",
       "networking": "public",
-      "image": "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000",
+      "image": "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
       "endpoint": "https://sammy.microdroplets.digitalocean.app",
       "created_at": "2026-07-16T10:00:00Z"
     }

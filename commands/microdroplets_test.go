@@ -34,7 +34,7 @@ var (
 			State:      godo.MicroDropletStateRunning,
 			Size:       "md-1vcpu-512mb",
 			Networking: godo.MicroDropletNetworkingPublic,
-			Image:      "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000",
+			Image:      "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
 			Endpoint:   "https://sammy.microdroplets.digitalocean.app",
 			Created:    "2026-07-16T10:00:00Z",
 		},
@@ -58,6 +58,7 @@ var (
 		MicroDropletImage: &godo.MicroDropletImage{
 			ID:      "aa11bb22-cc33-dd44-ee55-ff6600000000",
 			Name:    "hello-world",
+			Region:  "nyc1",
 			Source:  "docker.io/library/hello-world:latest",
 			Status:  godo.MicroDropletImageStatusAvailable,
 			Created: "2026-07-16T09:00:00Z",
@@ -119,7 +120,7 @@ func TestMicroDropletCreate(t *testing.T) {
 			Name:         "sammy-microdroplet",
 			Region:       "nyc1",
 			Size:         "md-1vcpu-512mb",
-			Image:        "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000",
+			Image:        "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
 			Networking:   godo.MicroDropletNetworkingVPC,
 			VPCUUID:      "vpc-uuid-1234",
 			AutoPause:    &godo.AutoPauseConfig{Enabled: &enabled, IdleTimeout: "5m"},
@@ -134,7 +135,7 @@ func TestMicroDropletCreate(t *testing.T) {
 		config.Args = append(config.Args, "sammy-microdroplet")
 		config.Doit.Set(config.NS, doctl.ArgRegionSlug, "nyc1")
 		config.Doit.Set(config.NS, doctl.ArgSizeSlug, "md-1vcpu-512mb")
-		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000")
+		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000")
 		config.Doit.Set(config.NS, "networking", "vpc")
 		config.Doit.Set(config.NS, doctl.ArgVPCUUID, "vpc-uuid-1234")
 		config.Doit.Set(config.NS, "auto-pause", true)
@@ -156,17 +157,44 @@ func TestMicroDropletCreate_minimal(t *testing.T) {
 			Name:   "sammy-microdroplet",
 			Region: "nyc1",
 			Size:   "md-1vcpu-512mb",
-			Image:  "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000",
+			Image:  "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
 		}
 		tm.microDroplets.EXPECT().Create(expected).Return(&testMicroDroplet, nil)
 
 		config.Args = append(config.Args, "sammy-microdroplet")
 		config.Doit.Set(config.NS, doctl.ArgRegionSlug, "nyc1")
 		config.Doit.Set(config.NS, doctl.ArgSizeSlug, "md-1vcpu-512mb")
-		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000")
+		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000")
 
 		err := RunMicroDropletCreate(config)
 		require.NoError(t, err)
+	})
+}
+
+func TestMicroDropletCreate_autoPauseExplicitFalse(t *testing.T) {
+	withTestClient(t, func(config *CmdConfig, tm *tcMocks) {
+		enabled := false
+		expected := &godo.MicroDropletCreateRequest{
+			Name:      "always-on",
+			Region:    "nyc1",
+			Size:      "md-1vcpu-512mb",
+			Image:     "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000",
+			AutoPause: &godo.AutoPauseConfig{Enabled: &enabled},
+		}
+		tm.microDroplets.EXPECT().Create(expected).Return(&testMicroDroplet, nil)
+
+		createCmd, _, err := MicroDroplet().Command.Find([]string{"create"})
+		require.NoError(t, err)
+		require.NoError(t, createCmd.Flags().Set("auto-pause", "false"))
+
+		config.Command = createCmd
+		config.Args = append(config.Args, "always-on")
+		config.Doit.Set(config.NS, doctl.ArgRegionSlug, "nyc1")
+		config.Doit.Set(config.NS, doctl.ArgSizeSlug, "md-1vcpu-512mb")
+		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000")
+		config.Doit.Set(config.NS, "auto-pause", false)
+
+		require.NoError(t, RunMicroDropletCreate(config))
 	})
 }
 
@@ -175,7 +203,7 @@ func TestMicroDropletCreate_badEnv(t *testing.T) {
 		config.Args = append(config.Args, "sammy-microdroplet")
 		config.Doit.Set(config.NS, doctl.ArgRegionSlug, "nyc1")
 		config.Doit.Set(config.NS, doctl.ArgSizeSlug, "md-1vcpu-512mb")
-		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000")
+		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000")
 		config.Doit.Set(config.NS, "env", []string{"MALFORMED"})
 
 		err := RunMicroDropletCreate(config)
@@ -190,7 +218,7 @@ func TestMicroDropletCreate_idleTimeoutRequiresAutoPause(t *testing.T) {
 		config.Args = append(config.Args, "sammy-microdroplet")
 		config.Doit.Set(config.NS, doctl.ArgRegionSlug, "nyc1")
 		config.Doit.Set(config.NS, doctl.ArgSizeSlug, "md-1vcpu-512mb")
-		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet-image:0f0f0f0f-0000-0000-0000-000000000000")
+		config.Doit.Set(config.NS, doctl.ArgImage, "do:microdroplet_image:0f0f0f0f-0000-0000-0000-000000000000")
 		config.Doit.Set(config.NS, "auto-pause-idle-timeout", "5m")
 
 		err := RunMicroDropletCreate(config)
@@ -282,11 +310,13 @@ func TestMicroDropletImageCreate(t *testing.T) {
 	withTestClient(t, func(config *CmdConfig, tm *tcMocks) {
 		expected := &godo.MicroDropletImageCreateRequest{
 			Name:   "hello-world",
+			Region: "nyc1",
 			Source: "docker.io/library/hello-world:latest",
 		}
 		tm.microDropletImages.EXPECT().Create(expected).Return(&testMicroDropletImage, nil)
 
 		config.Args = append(config.Args, "hello-world")
+		config.Doit.Set(config.NS, doctl.ArgRegionSlug, "nyc1")
 		config.Doit.Set(config.NS, "source", "docker.io/library/hello-world:latest")
 
 		err := RunMicroDropletImageCreate(config)

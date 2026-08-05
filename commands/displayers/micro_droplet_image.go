@@ -30,13 +30,14 @@ func (i *MicroDropletImage) JSON(out io.Writer) error {
 }
 
 func (i *MicroDropletImage) Cols() []string {
-	return []string{"ID", "Name", "Source", "Status", "Created"}
+	return []string{"ID", "Name", "Region", "Source", "Status", "Created"}
 }
 
 func (i *MicroDropletImage) ColMap() map[string]string {
 	return map[string]string{
 		"ID":      "ID",
 		"Name":    "Name",
+		"Region":  "Region",
 		"Source":  "Source",
 		"Status":  "Status",
 		"Created": "Created At",
@@ -49,6 +50,7 @@ func (i *MicroDropletImage) KV() []map[string]any {
 		out = append(out, map[string]any{
 			"ID":      img.ID,
 			"Name":    img.Name,
+			"Region":  img.Region,
 			"Source":  img.Source,
 			"Status":  string(img.Status),
 			"Created": img.Created,
